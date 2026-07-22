@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>セミナー参加お申し込み</title>
+<style>
+  :root{
+    --color-bg:#ffffff;
+    --color-black:#1a1a1a;
+    --color-gray-900:#1a1a1a;
+    --color-gray-600:#6b6b6b;
+    --color-gray-300:#d9d9d9;
+    --color-gray-100:#f5f5f5;
+    --color-accent:#1F3A5C;      /* ネイビー系アクセントカラー */
+    --color-accent-light:#2C5AA0;
+    --color-error:#c0392b;
+    --font: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0;
+    background:var(--color-bg);
+    color:var(--color-black);
+    font-family:var(--font);
+    -webkit-font-smoothing:antialiased;
+    height:100%;
+  }
+
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* ヘッダー */
+  .app-header{
+    padding:20px 24px 16px;
+    border-bottom:1px solid var(--color-gray-300);
+  }
+  .brand{
+    font-size:13px;
+    letter-spacing:0.08em;
+    color:var(--color-gray-600);
+  }
+  .brand strong{
+    color:var(--color-accent);
+  }
+
+  /* メインエリア */
+  .stage{
+    flex:1;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .screen{
+    position:absolute;
+    inset:0;
+    padding:40px 24px 24px;
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    transform:translateX(24px);
+    pointer-events:none;
+    transition:opacity 0.28s ease, transform 0.28s ease;
+  }
+  .screen.active{
+    opacity:1;
+    transform:translateX(0);
+    pointer-events:auto;
+  }
+  .screen.leaving-back{
+    transform:translateX(-24px);
+  }
+
+  .q-label{
+    font-size:21px;
+    font-weight:700;
+    line-height:1.6;
+    margin:0 0 6px;
+  }
+  .q-required{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    color:#fff;
+    background:var(--color-accent);
+    padding:2px 8px;
+    border-radius:3px;
+    margin-left:8px;
+    vertical-align:middle;
+  }
+  .q-optional{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    color:var(--color-gray-600);
+    background:var(--color-gray-100);
+    padding:2px 8px;
+    border-radius:3px;
+    margin-left:8px;
+    vertical-align:middle;
+  }
+
+  .q-desc{
+    font-size:14px;
+    color:var(--color-gray-600);
+    line-height:1.7;
+    margin:14px 0 0;
+  }
+
+  .q-body{ flex:1; }
+
+  input[type="text"], input[type="email"], input[type="tel"], input[type="date"]{
+    width:100%;
+    font-size:17px;
+    font-family:var(--font);
+    padding:14px 16px;
+    border:1.5px solid var(--color-gray-300);
+    border-radius:10px;
+    outline:none;
+    background:transparent;
+    color:var(--color-black);
+    transition:border-color 0.2s ease;
+  }
+  input:focus{
+    border-color:var(--color-accent);
+  }
+  input.error{
+    border-color:var(--color-error);
+  }
+
+  .error-msg{
+    font-size:13px;
+    color:var(--color-error);
+    margin-top:8px;
+    min-height:16px;
+  }
+
+  .options{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .option{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    border:1.5px solid var(--color-gray-300);
+    border-radius:10px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+  .option:hover{
+    border-color:var(--color-accent-light);
+  }
+  .option.selected{
+    border-color:var(--color-accent);
+    background:#F0F4F9;
+  }
+  .option .dot{
+    width:18px; height:18px;
+    border-radius:50%;
+    border:2px solid var(--color-gray-300);
+    flex-shrink:0;
+    position:relative;
+  }
+  .option.selected .dot{
+    border-color:var(--color-accent);
+  }
+  .option.selected .dot::after{
+    content:"";
+    position:absolute;
+    inset:3px;
+    border-radius:50%;
+    background:var(--color-accent);
+  }
+  .option .option-text{
+    font-size:15px;
+  }
+  .option input{ display:none; }
+
+  /* フッター（次へ／戻る） */
+  .footer{
+    padding:16px 24px 28px;
+    display:flex;
+    gap:10px;
+    border-top:1px solid var(--color-gray-300);
+  }
+  .btn{
+    flex:1;
+    font-family:var(--font);
+    font-size:15px;
+    font-weight:700;
+    padding:15px 16px;
+    border-radius:8px;
+    border:none;
+    cursor:pointer;
+    transition:opacity 0.15s ease, background 0.15s ease;
+  }
+  .btn-primary{
+    background:var(--color-accent);
+    color:#fff;
+  }
+  .btn-primary:hover{ background:var(--color-accent-light); }
+  .btn-secondary{
+    background:var(--color-gray-100);
+    color:var(--color-black);
+    flex:0 0 96px;
+  }
+  .btn-secondary:hover{ background:var(--color-gray-300); }
+  .btn:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+
+  /* 確認画面 */
+  .confirm-title{
+    font-size:21px;
+    font-weight:700;
+    margin:0 0 6px;
+  }
+  .confirm-desc{
+    font-size:14px;
+    color:var(--color-gray-600);
+    margin:0 0 24px;
+  }
+  .confirm-list{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    flex:1;
+    overflow-y:auto;
+  }
+  .confirm-item{
+    padding:16px 0;
+    border-bottom:1px solid var(--color-gray-300);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .confirm-item-main{ flex:1; min-width:0; }
+  .confirm-item-label{
+    font-size:12px;
+    color:var(--color-gray-600);
+    margin-bottom:4px;
+  }
+  .confirm-item-value{
+    font-size:15px;
+    font-weight:600;
+    word-break:break-all;
+  }
+  .confirm-item-value.empty{
+    color:var(--color-gray-600);
+    font-weight:400;
+  }
+  .confirm-edit{
+    font-size:13px;
+    color:var(--color-accent);
+    font-weight:600;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:4px 0;
+    flex-shrink:0;
+  }
+
+  /* サンクス画面 */
+  .thanks-screen{
+    padding-bottom:0;
+  }
+  .thanks-body{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .thanks-mark{
+    width:64px; height:64px;
+    border-radius:50%;
+    background:var(--color-accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 24px;
+  }
+  .thanks-mark svg{ width:28px; height:28px; }
+  .thanks-title{
+    font-size:22px;
+    font-weight:700;
+    margin:0 0 12px;
+  }
+  .thanks-desc{
+    font-size:14px;
+    color:var(--color-gray-600);
+    line-height:1.8;
+  }
+  .close-hint{
+    font-size:12px;
+    color:var(--color-gray-600);
+    margin-top:18px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div class="brand" id="brandText">お申し込みフォーム</div>
+  </div>
+
+  <div class="stage" id="stage"></div>
+</div>
+
+<script>
+/* ============================================================================
+   ▼▼▼ フォーム全体の名前などはここを書き換えてください ▼▼▼
+   ----------------------------------------------------------------------------
+   ・下の「ラベル：値」の値の部分だけを書き換えてください。
+   ・改行を含めたい場合は、その行に <br> と書くと、その位置で改行されます。
+   ・「案内文」は、フォームを開いて最初に表示される説明画面の文章です。
+     この画面には「同意ボタンの文言」で指定したボタンのみが表示され、
+     押すと1問目の質問に進みます。
+   ============================================================================ */
+const FORM_SETTINGS_TEXT = `
+フォームの見出し：お申し込みフォーム
+ブラウザのタブに表示する名前：セミナー参加お申し込み
+案内文：このアンケートの目的は、皆さまのご意見を集約するために実施しております。<br>ご協力のほど、よろしくお願いいたします。
+同意ボタンの文言：同意する
+送信完了メッセージのタイトル：お申し込みを受け付けました
+送信完了メッセージの本文：この度はお申し込みいただき<br>誠にありがとうございます。
+完了ボタンの文言：完了
+タブが閉じない場合の案内文：このタブを直接閉じてください。
+`;
+
+function parseSettingsText(text){
+  const settings = {};
+  text.split("\n").forEach(rawLine => {
+    const line = rawLine.trim();
+    if (!line) return;
+    const sep = line.includes("：") ? "：" : (line.includes(":") ? ":" : null);
+    if (!sep) return;
+    const sepIndex = line.indexOf(sep);
+    const key = line.slice(0, sepIndex).trim();
+    const value = line.slice(sepIndex + 1).trim();
+    settings[key] = value;
+  });
+  return {
+    formTitle: settings["フォームの見出し"] || "お申し込みフォーム",
+    tabTitle: settings["ブラウザのタブに表示する名前"] || "お申し込みフォーム",
+    introText: settings["案内文"] || "",
+    agreeButtonLabel: settings["同意ボタンの文言"] || "同意する",
+    thanksTitle: settings["送信完了メッセージのタイトル"] || "お申し込みを受け付けました",
+    thanksDesc: settings["送信完了メッセージの本文"] || "ありがとうございました。",
+    closeButtonLabel: settings["完了ボタンの文言"] || "完了",
+    closeHint: settings["タブが閉じない場合の案内文"] || "このタブを閉じてください。",
+  };
+}
+
+const FORM_SETTINGS = parseSettingsText(FORM_SETTINGS_TEXT);
+document.title = FORM_SETTINGS.tabTitle;
+document.getElementById("brandText").textContent = FORM_SETTINGS.formTitle;
+
+/* ============================================================================
+   ▼▼▼ アンケート内容はここを書き換えてください（プログラムの知識は不要です）▼▼▼
+   ----------------------------------------------------------------------------
+   ・1つの質問は「===」の行で区切ります。
+   ・各行は「ラベル：値」の形式で書きます（：は全角のコロンです）。
+   ・質問を増やしたいときは、質問1つ分のブロック（=== から次の === の手前まで）
+     をまるごとコピーして、末尾に貼り付け、内容を書き換えてください。
+   ・質問を減らしたいときは、そのブロックを丸ごと削除してください。
+   ・上から順番に、回答画面にもその順番で表示されます。
+   ・「質問文」には何を書いても構いません（例：ご趣味、お好きな食べ物、など自由です）。
+     「種類」はその質問の“入力欄の見た目とチェック方法”を決めるためのもので、
+     下の「使える種類」の中から選んで書く必要があります（自由な文字列は使えません）。
+
+   【使えるラベル】
+     質問文     … 画面に表示される質問のタイトル（必須・自由に書けます）
+     説明文     … 質問の下に表示する補足説明（省略すると表示なし）
+     種類       … 下の「使える種類」から1つ選んで書く（必須）
+     必須       … 「はい」または「いいえ」（省略すると「いいえ」扱い）
+     文字数上限 … 「種類：短い文章」のときだけ使える。数字のみ（省略可）
+     選択肢1    … 「種類：選択式」のときだけ使う。選べる数だけ
+     選択肢2      「選択肢3」「選択肢4」…と行を増やせる
+     選択肢3
+
+   【使える種類（そのままコピペして使ってください）】
+     氏名           … 名前の入力欄
+     住所           … 住所の入力欄
+     電話番号       … 電話番号の入力欄（半角数字とハイフンのみ許可）
+     メールアドレス … メールアドレスの入力欄（メール形式かどうかを自動チェック）
+     日付           … 日付の入力欄
+     選択式         … 選択肢の中から1つ選ぶ形式（ラジオボタン）
+     短い文章       … 自由に1行で記入する形式（例：ご趣味、お好きな食べ物、ご意見など）
+   ============================================================================ */
+const QUESTIONS_TEXT = `
+===
+質問文：お名前
+説明文：フルネームでご入力ください。
+種類：氏名
+必須：はい
+===
+質問文：メールアドレス
+説明文：参加確定のご連絡をお送りします。
+種類：メールアドレス
+必須：はい
+===
+質問文：電話番号
+説明文：半角数字とハイフンでご入力ください。
+種類：電話番号
+必須：はい
+===
+質問文：参加希望日
+説明文：ご都合の良い開催日を1つお選びください。
+種類：選択式
+必須：はい
+選択肢1：7月26日（日）14:00〜
+選択肢2：8月2日（日）14:00〜
+選択肢3：8月9日（日）10:00〜
+===
+質問文：ご質問・ご要望
+説明文：当日までに確認しておきたいことがあればご記入ください（任意）。
+種類：短い文章
+必須：いいえ
+文字数上限：200
+===
+`;
+
+/* ----------------------------------------------------------------------------
+   ▲▲▲ 編集はここまで。この下はプログラムなので基本的に触らなくてOKです ▲▲▲
+   ---------------------------------------------------------------------------- */
+
+// 「種類：〇〇」の日本語表記 → 内部処理用の種別への対応表
+const TYPE_MAP = {
+  "氏名": "name",
+  "住所": "address",
+  "電話番号": "tel",
+  "メールアドレス": "email",
+  "日付": "date",
+  "選択式": "single_choice",
+  "短い文章": "short_text",
+};
+
+// QUESTIONS_TEXT（人が読み書きする形式）を、画面表示用のデータに変換する
+function parseQuestionsText(text){
+  const blocks = text
+    .split(/^===\s*$/m)
+    .map(b => b.trim())
+    .filter(b => b.length > 0);
+
+  return blocks.map((block, i) => {
+    const q = {
+      id: "q" + (i + 1),
+      label: "",
+      description: "",
+      type: "short_text",
+      required: false,
+      validation: null,
+      options: [],
+    };
+
+    block.split("\n").forEach(rawLine => {
+      const line = rawLine.trim();
+      if (!line) return;
+      const sep = line.includes("：") ? "：" : (line.includes(":") ? ":" : null);
+      if (!sep) return;
+      const sepIndex = line.indexOf(sep);
+      const key = line.slice(0, sepIndex).trim();
+      const value = line.slice(sepIndex + 1).trim();
+
+      if (key === "質問文") q.label = value;
+      else if (key === "説明文") q.description = value;
+      else if (key === "種類") q.type = TYPE_MAP[value] || "short_text";
+      else if (key === "必須") q.required = (value === "はい");
+      else if (key === "文字数上限") q.maxLength = parseInt(value, 10) || null;
+      else if (key.startsWith("選択肢")) q.options.push(value);
+    });
+
+    if (q.type === "email") q.validation = "email";
+    else if (q.type === "tel") q.validation = "phone";
+    else if (q.type === "short_text" && q.maxLength) q.validation = { maxLength: q.maxLength };
+
+    return q;
+  });
+}
+
+const QUESTIONS = parseQuestionsText(QUESTIONS_TEXT);
+
+
+let current = 0;                 // 現在の質問インデックス
+const answers = {};              // 回答を保持
+let confirmScreenActive = false;
+
+/* ---------------------------------------------------------
+   GAS連携（外部ホスティング用：fetch()でGASのAPIを呼び出す）
+   ----------------------------------------------------------
+   ・下のURLを、デプロイ後のGASウェブアプリのURL（.../exec）に書き換えてください。
+   ・書き換える前（プレースホルダーのまま）は、通信せずに動作確認できる
+     モードで動きます（見た目の確認用）。
+   --------------------------------------------------------- */
+const GAS_API_URL = "ここにデプロイ後のGASウェブアプリのURLを貼り付ける";
+
+function createLocalMockRun(){
+  const mock = {
+    _success: null,
+    _failure: null,
+    withSuccessHandler(fn){ mock._success = fn; return mock; },
+    withFailureHandler(fn){ mock._failure = fn; return mock; },
+    submitForm(data){
+      console.log("[ローカルモック] GAS_API_URL が未設定のため、実際の送信は行っていません:", data);
+      // 実際の通信を模した遅延
+      setTimeout(() => {
+        if (mock._success) mock._success({ ok: true });
+      }, 700);
+    }
+  };
+  return mock;
+}
+
+function createFetchRun(){
+  const run = {
+    _success: null,
+    _failure: null,
+    withSuccessHandler(fn){ run._success = fn; return run; },
+    withFailureHandler(fn){ run._failure = fn; return run; },
+    async submitForm(data){
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          // Content-Typeをtext/plainにすることで、ブラウザの事前確認通信(プリフライト)を回避している
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok){
+          throw new Error("サーバーとの通信に失敗しました（status: " + res.status + "）");
+        }
+        const result = await res.json();
+        if (result && result.ok){
+          if (run._success) run._success(result);
+        } else {
+          if (run._failure) run._failure({ message: (result && result.message) || "送信に失敗しました。" });
+        }
+      } catch (err) {
+        if (run._failure){
+          run._failure({ message: "通信に失敗しました。インターネット接続をご確認のうえ、時間をおいて再度お試しください。" });
+        }
+      }
+    }
+  };
+  return run;
+}
+
+const gasRun = GAS_API_URL.startsWith("http")
+  ? createFetchRun()
+  : createLocalMockRun();
+
+const stage = document.getElementById("stage");
+
+function validate(q, rawValue){
+  const value = (rawValue ?? "").trim();
+
+  if (q.required && value === ""){
+    return "この項目は必須です。";
+  }
+  if (value === ""){
+    return null; // 任意項目で未入力ならOK
+  }
+  if (q.validation === "email"){
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!re.test(value)) return "メールアドレスの形式で入力してください。";
+  }
+  if (q.validation === "phone"){
+    const re = /^[0-9-]+$/;
+    if (!re.test(value)) return "半角数字とハイフンのみで入力してください。";
+  }
+  if (q.validation && q.validation.maxLength){
+    if (value.length > q.validation.maxLength){
+      return `${q.validation.maxLength}文字以内で入力してください。`;
+    }
+  }
+  return null;
+}
+
+function renderIntroScreen(){
+  const introHtml = FORM_SETTINGS.introText
+    ? FORM_SETTINGS.introText.split("<br>").map(escapeHtml).join("<br>")
+    : "";
+
+  const html = `
+    <div class="screen active" id="screen-intro">
+      <div class="q-body">
+        <p class="q-desc" style="font-size:15px; line-height:1.9; margin-top:0;">${introHtml}</p>
+      </div>
+      <div class="footer">
+        <button class="btn btn-primary" id="btnAgree">${escapeHtml(FORM_SETTINGS.agreeButtonLabel)}</button>
+      </div>
+    </div>
+  `;
+  stage.innerHTML = html;
+
+  document.getElementById("btnAgree").addEventListener("click", () => {
+    current = 0;
+    renderQuestionScreen(current);
+  });
+}
+
+function renderQuestionScreen(index){
+  const q = QUESTIONS[index];
+  const savedValue = answers[q.id] ?? "";
+
+  const badge = q.required
+    ? '<span class="q-required">必須</span>'
+    : '<span class="q-optional">任意</span>';
+
+  let bodyHtml = "";
+  if (q.type === "single_choice"){
+    bodyHtml = `<div class="options">` + q.options.map((opt, i) => `
+      <label class="option ${savedValue === opt ? "selected" : ""}" data-value="${escapeHtml(opt)}">
+        <input type="radio" name="opt" ${savedValue === opt ? "checked" : ""}>
+        <span class="dot"></span>
+        <span class="option-text">${escapeHtml(opt)}</span>
+      </label>
+    `).join("") + `</div>`;
+  } else {
+    const inputType = q.type === "email" ? "email" : q.type === "tel" ? "tel" : "text";
+    bodyHtml = `<input type="${inputType}" id="answerInput" value="${escapeHtml(savedValue)}" placeholder="入力してください">`;
+  }
+
+  const html = `
+    <div class="screen active" id="screen-q">
+      <div class="q-body">
+        <h2 class="q-label">${escapeHtml(q.label)}${badge}</h2>
+        ${bodyHtml}
+        <p class="q-desc">${escapeHtml(q.description)}</p>
+        <div class="error-msg" id="errorMsg"></div>
+      </div>
+      <div class="footer">
+        <button class="btn btn-secondary" id="btnBack">戻る</button>
+        <button class="btn btn-primary" id="btnNext">${index === QUESTIONS.length - 1 ? "確認画面へ" : "次へ"}</button>
+      </div>
+    </div>
+  `;
+  stage.innerHTML = html;
+
+  // 選択肢のクリック処理
+  if (q.type === "single_choice"){
+    stage.querySelectorAll(".option").forEach(el => {
+      el.addEventListener("click", () => {
+        stage.querySelectorAll(".option").forEach(o => o.classList.remove("selected"));
+        el.classList.add("selected");
+        answers[q.id] = el.dataset.value;
+        document.getElementById("errorMsg").textContent = "";
+      });
+    });
+  } else {
+    const input = document.getElementById("answerInput");
+    input.addEventListener("input", () => {
+      answers[q.id] = input.value;
+    });
+    // 最初の質問以外はフォーカスしない（スクロール位置ジャンプ防止のため軽めに）
+    setTimeout(() => input.focus(), 50);
+  }
+
+  document.getElementById("btnBack").addEventListener("click", () => {
+    if (index === 0){
+      renderIntroScreen();
+      return;
+    }
+    current -= 1;
+    renderQuestionScreen(current);
+  });
+
+  document.getElementById("btnNext").addEventListener("click", () => {
+    const q = QUESTIONS[index];
+    const value = q.type === "single_choice" ? (answers[q.id] ?? "") : (document.getElementById("answerInput").value ?? "");
+    const errorText = validate(q, value);
+    const errorEl = document.getElementById("errorMsg");
+
+    if (errorText){
+      errorEl.textContent = errorText;
+      const inputEl = document.getElementById("answerInput");
+      if (inputEl) inputEl.classList.add("error");
+      return;
+    }
+    answers[q.id] = value.trim ? value.trim() : value;
+
+    if (index === QUESTIONS.length - 1){
+      renderConfirmScreen();
+    } else {
+      current += 1;
+      renderQuestionScreen(current);
+    }
+  });
+}
+
+function renderConfirmScreen(){
+  const itemsHtml = QUESTIONS.map((q, i) => {
+    const val = answers[q.id];
+    const displayVal = (val === undefined || val === "") ? "（未入力）" : val;
+    const emptyClass = (val === undefined || val === "") ? "empty" : "";
+    return `
+      <div class="confirm-item">
+        <div class="confirm-item-main">
+          <div class="confirm-item-label">${escapeHtml(q.label)}</div>
+          <div class="confirm-item-value ${emptyClass}">${escapeHtml(displayVal)}</div>
+        </div>
+        <button class="confirm-edit" data-index="${i}">編集</button>
+      </div>
+    `;
+  }).join("");
+
+  const html = `
+    <div class="screen active" id="screen-confirm">
+      <div class="q-body">
+        <h2 class="confirm-title">入力内容の確認</h2>
+        <p class="confirm-desc">内容をご確認のうえ、送信してください。修正する場合は各項目の「編集」を押してください。</p>
+        <div class="confirm-list">${itemsHtml}</div>
+        <div class="error-msg" id="submitError"></div>
+      </div>
+      <div class="footer">
+        <button class="btn btn-secondary" id="btnConfirmBack">戻る</button>
+        <button class="btn btn-primary" id="btnSubmit">送信する</button>
+      </div>
+    </div>
+  `;
+  stage.innerHTML = html;
+
+  stage.querySelectorAll(".confirm-edit").forEach(btn => {
+    btn.addEventListener("click", () => {
+      current = parseInt(btn.dataset.index, 10);
+      renderQuestionScreen(current);
+    });
+  });
+
+  document.getElementById("btnConfirmBack").addEventListener("click", () => {
+    current = QUESTIONS.length - 1;
+    renderQuestionScreen(current);
+  });
+
+  document.getElementById("btnSubmit").addEventListener("click", () => {
+    const btnSubmit = document.getElementById("btnSubmit");
+    const btnBack = document.getElementById("btnConfirmBack");
+    const errorEl = document.getElementById("submitError");
+
+    errorEl.textContent = "";
+    btnSubmit.disabled = true;
+    btnBack.disabled = true;
+    btnSubmit.textContent = "送信中…";
+
+    const items = QUESTIONS.map(q => ({
+      label: q.label,
+      value: answers[q.id] ?? ""
+    }));
+
+    gasRun
+      .withSuccessHandler(() => {
+        renderThanksScreen();
+      })
+      .withFailureHandler((error) => {
+        btnSubmit.disabled = false;
+        btnBack.disabled = false;
+        btnSubmit.textContent = "送信する";
+        errorEl.textContent = (error && error.message)
+          ? error.message
+          : "送信に失敗しました。時間をおいて再度お試しください。";
+      })
+      .submitForm({ items });
+  });
+}
+
+function renderThanksScreen(){
+  const html = `
+    <div class="screen active thanks-screen" id="screen-thanks">
+      <div class="thanks-body">
+        <div class="thanks-mark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 12.5L9.5 18L20 6" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 class="thanks-title">${escapeHtml(FORM_SETTINGS.thanksTitle)}</h2>
+        <p class="thanks-desc">${FORM_SETTINGS.thanksDesc.replaceAll("<br>", "\n").split("\n").map(escapeHtml).join("<br>")}</p>
+        <p class="close-hint" id="closeHint" style="display:none;">${escapeHtml(FORM_SETTINGS.closeHint)}</p>
+      </div>
+      <div class="footer">
+        <button class="btn btn-primary" id="btnClose">${escapeHtml(FORM_SETTINGS.closeButtonLabel)}</button>
+      </div>
+    </div>
+  `;
+  stage.innerHTML = html;
+
+  document.getElementById("btnClose").addEventListener("click", () => {
+    try {
+      window.close();
+    } catch (e) {
+      // ブラウザによっては window.close() が例外を投げる場合がある
+    }
+    // ブラウザの制限でタブが閉じられなかった場合のフォールバック表示
+    setTimeout(() => {
+      const hint = document.getElementById("closeHint");
+      if (hint) hint.style.display = "block";
+    }, 300);
+  });
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+renderIntroScreen();
+</script>
+</body>
+</html>
