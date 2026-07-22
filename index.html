@@ -440,13 +440,13 @@ const QUESTIONS_TEXT = `
 必須：はい
 ===
 質問文：現住所
-説明文：都道府県からご入力ください。<br>集合住宅の場合は必ず建物名、号室までご入力ください。
+説明文：都道府県からご入力ください。集合住宅の場合は必ず建物名、号室までご入力ください。
 種類：短い文章
 必須：はい
 文字数上限：200
 ===
 質問文：電話番号
-説明文：半角数字とハイフンでご入力ください。
+説明文：半角数字でご入力ください。
 種類：電話番号
 必須：はい
 ===
@@ -597,7 +597,7 @@ function validate(q, rawValue){
   }
   if (q.validation === "phone"){
     const re = /^[0-9-]+$/;
-    if (!re.test(value)) return "半角数字とハイフンのみで入力してください。";
+    if (!re.test(value)) return "半角数字のみで入力してください。";
   }
   if (q.validation && q.validation.maxLength){
     if (value.length > q.validation.maxLength){
