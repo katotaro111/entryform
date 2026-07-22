@@ -340,7 +340,13 @@ const FORM_SETTINGS_TEXT = `
 送信完了メッセージの本文：この度はお申し込みいただき<br>誠にありがとうございます。
 完了ボタンの文言：完了
 タブが閉じない場合の案内文：このタブを直接閉じてください。
+送信後の移動先URL：
 `;
+/* ↑「送信後の移動先URL」に https://～ のURLを入力すると、送信完了画面の
+   「完了」ボタンを押した瞬間にそのURLへ移動します。また、ボタンを押さなくても
+   5秒後に自動的に同じURLへ移動します。
+   空欄のままにしておくと、これまで通り「完了」ボタンでタブを閉じようとする
+   動作になります（移動はしません）。 */
 
 function parseSettingsText(text){
   const settings = {};
@@ -363,6 +369,7 @@ function parseSettingsText(text){
     thanksDesc: settings["送信完了メッセージの本文"] || "ありがとうございました。",
     closeButtonLabel: settings["完了ボタンの文言"] || "完了",
     closeHint: settings["タブが閉じない場合の案内文"] || "このタブを閉じてください。",
+    redirectUrl: settings["送信後の移動先URL"] || "",
   };
 }
 
@@ -778,6 +785,12 @@ function renderConfirmScreen(){
 }
 
 function renderThanksScreen(){
+  const hasRedirect = !!FORM_SETTINGS.redirectUrl;
+
+  const hintOrCountdownHtml = hasRedirect
+    ? `<p class="close-hint" id="redirectHint">5秒後に自動的に移動します…</p>`
+    : `<p class="close-hint" id="closeHint" style="display:none;">${escapeHtml(FORM_SETTINGS.closeHint)}</p>`;
+
   const html = `
     <div class="screen active thanks-screen" id="screen-thanks">
       <div class="thanks-body">
@@ -788,7 +801,7 @@ function renderThanksScreen(){
         </div>
         <h2 class="thanks-title">${escapeHtml(FORM_SETTINGS.thanksTitle)}</h2>
         <p class="thanks-desc">${FORM_SETTINGS.thanksDesc.replaceAll("<br>", "\n").split("\n").map(escapeHtml).join("<br>")}</p>
-        <p class="close-hint" id="closeHint" style="display:none;">${escapeHtml(FORM_SETTINGS.closeHint)}</p>
+        ${hintOrCountdownHtml}
       </div>
       <div class="footer">
         <button class="btn btn-primary" id="btnClose">${escapeHtml(FORM_SETTINGS.closeButtonLabel)}</button>
@@ -797,19 +810,42 @@ function renderThanksScreen(){
   `;
   stage.innerHTML = html;
 
-  document.getElementById("btnClose").addEventListener("click", () => {
-    try {
-      window.close();
-    } catch (e) {
-      // ブラウザによっては window.close() が例外を投げる場合がある
-    }
-    // ブラウザの制限でタブが閉じられなかった場合のフォールバック表示
-    setTimeout(() => {
-      const hint = document.getElementById("closeHint");
-      if (hint) hint.style.display = "block";
-    }, 300);
-  });
+  if (hasRedirect){
+    // 「完了」ボタンを押したら即座に移動
+    document.getElementById("btnClose").addEventListener("click", () => {
+      window.location.href = FORM_SETTINGS.redirectUrl;
+    });
+
+    // 5秒間操作がなければ自動的に移動（1秒ごとにカウントダウン表示を更新）
+    let remaining = 5;
+    const hintEl = document.getElementById("redirectHint");
+    const timer = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0){
+        clearInterval(timer);
+        window.location.href = FORM_SETTINGS.redirectUrl;
+        return;
+      }
+      if (hintEl) hintEl.textContent = remaining + "秒後に自動的に移動します…";
+    }, 1000);
+
+  } else {
+    // 移動先URL未設定の場合は、従来通り「タブを閉じる」動作
+    document.getElementById("btnClose").addEventListener("click", () => {
+      try {
+        window.close();
+      } catch (e) {
+        // ブラウザによっては window.close() が例外を投げる場合がある
+      }
+      // ブラウザの制限でタブが閉じられなかった場合のフォールバック表示
+      setTimeout(() => {
+        const hint = document.getElementById("closeHint");
+        if (hint) hint.style.display = "block";
+      }, 300);
+    });
+  }
 }
+
 
 function escapeHtml(str){
   return String(str)
