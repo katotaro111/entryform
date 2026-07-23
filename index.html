@@ -27,21 +27,25 @@
     font-family:var(--font);
     -webkit-font-smoothing:antialiased;
     height:100%;
+    overflow:hidden; /* ページ全体はスクロールさせず、必要な箇所だけ内部スクロールさせる */
   }
 
   .app{
     max-width:480px;
     margin:0 auto;
-    min-height:100vh;
+    height:100vh;
+    height:100dvh; /* スマホのアドレスバー等を考慮した実際の表示高さ */
     display:flex;
     flex-direction:column;
     position:relative;
+    overflow:hidden;
   }
 
   /* ヘッダー */
   .app-header{
-    padding:20px 24px 16px;
+    padding:14px 24px;
     border-bottom:1px solid var(--color-gray-300);
+    flex-shrink:0;
   }
   .brand{
     font-size:13px;
@@ -62,13 +66,14 @@
   .screen{
     position:absolute;
     inset:0;
-    padding:40px 24px 24px;
+    padding:20px 24px 0;
     display:flex;
     flex-direction:column;
     opacity:0;
     transform:translateX(24px);
     pointer-events:none;
     transition:opacity 0.28s ease, transform 0.28s ease;
+    overflow:hidden;
   }
   .screen.active{
     opacity:1;
@@ -115,7 +120,12 @@
     margin:14px 0 0;
   }
 
-  .q-body{ flex:1; }
+  .q-body{
+    flex:1;
+    min-height:0;      /* flexコンテナ内でoverflow-yを機能させるために必須 */
+    overflow-y:auto;
+    padding-bottom:16px;
+  }
 
   input[type="text"], input[type="email"], input[type="tel"], input[type="date"]{
     width:100%;
@@ -189,10 +199,11 @@
 
   /* フッター（次へ／戻る） */
   .footer{
-    padding:16px 24px 28px;
+    padding:12px 24px calc(16px + env(safe-area-inset-bottom, 0px));
     display:flex;
     gap:10px;
     border-top:1px solid var(--color-gray-300);
+    flex-shrink:0;
   }
   .btn{
     flex:1;
@@ -236,8 +247,6 @@
     display:flex;
     flex-direction:column;
     gap:0;
-    flex:1;
-    overflow-y:auto;
   }
   .confirm-item{
     padding:16px 0;
@@ -279,6 +288,8 @@
   }
   .thanks-body{
     flex:1;
+    min-height:0;
+    overflow-y:auto;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -597,7 +608,7 @@ function validate(q, rawValue){
   }
   if (q.validation === "phone"){
     const re = /^[0-9-]+$/;
-    if (!re.test(value)) return "半角数字のみで入力してください。";
+    if (!re.test(value)) return "半角数字とハイフンのみで入力してください。";
   }
   if (q.validation && q.validation.maxLength){
     if (value.length > q.validation.maxLength){
