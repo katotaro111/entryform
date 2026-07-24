@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>セミナー参加お申し込み</title>
+<title>金融機関情報申請フォーム</title>
 <style>
   :root{
     --color-bg:#ffffff;
@@ -151,6 +151,53 @@
     color:var(--color-error);
     margin-top:8px;
     min-height:16px;
+  }
+
+  /* 銀行名オートコンプリートの候補リスト */
+  .bank-suggestions{
+    margin-top:8px;
+    border:1.5px solid var(--color-gray-300);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .bank-suggestion-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 14px;
+    cursor:pointer;
+    border-bottom:1px solid var(--color-gray-100);
+    transition:background 0.12s ease;
+  }
+  .bank-suggestion-item:last-child{
+    border-bottom:none;
+  }
+  .bank-suggestion-item:hover{
+    background:#F0F4F9;
+  }
+  .bank-suggestion-name{
+    font-size:14px;
+  }
+  .bank-suggestion-code{
+    font-size:12px;
+    color:var(--color-gray-600);
+  }
+  .bank-link-hint{
+    font-size:12px;
+    color:var(--color-gray-600);
+    margin-top:8px;
+    line-height:1.6;
+  }
+
+  .address-sublabel{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--color-gray-600);
+    margin-bottom:6px;
+  }
+  .address-sublabel-second{
+    margin-top:18px;
   }
 
   .options{
@@ -353,11 +400,11 @@ const FORM_SETTINGS_TEXT = `
 タブが閉じない場合の案内文：このタブを直接閉じてください。
 送信後の移動先URL：https://www.bk.mufg.jp/index.html
 `;
-/* ↑「送信後の移動先URL」に https://～ のURLを入力すると、送信完了画面の
-   「完了」ボタンを押した瞬間にそのURLへ移動します。また、ボタンを押さなくても
-   5秒後に自動的に同じURLへ移動します。
-   空欄のままにしておくと、これまで通り「完了」ボタンでタブを閉じようとする
-   動作になります（移動はしません）。 */
+/* ↑「送信後の移動先URL」は必ず https://～ の形式で入力してください（必須）。
+   入力すると、送信完了画面の「完了」ボタンを押した瞬間にそのURLへ移動します。
+   また、ボタンを押さなくても5秒後に自動的に同じURLへ移動します。
+   空欄のままにしておくと、「完了」ボタンを押しても何も起きません
+   （画面はその場に留まったままになります）。 */
 
 function parseSettingsText(text){
   const settings = {};
@@ -406,39 +453,60 @@ document.getElementById("brandText").textContent = FORM_SETTINGS.formTitle;
      説明文     … 質問の下に表示する補足説明（省略すると表示なし）
      種類       … 下の「使える種類」から1つ選んで書く（必須）
      必須       … 「はい」または「いいえ」（省略すると「いいえ」扱い）
-     文字数上限 … 「種類：短い文章」のときだけ使える。数字のみ（省略可）
+     文字数上限 … どの種類でも使える。数字のみ（省略可）
+     入力制限   … 「種類：短い文章」のときだけ使える。下の3つから選ぶ（省略可）
+                  「半角数字のみ」「半角英数字のみ」「全角文字のみ」
      選択肢1    … 「種類：選択式」のときだけ使う。選べる数だけ
      選択肢2      「選択肢3」「選択肢4」…と行を増やせる
      選択肢3
 
-   【使える種類（そのままコピペして使ってください）】
-     氏名           … 名前の入力欄
-     住所           … 住所の入力欄
-     電話番号       … 電話番号の入力欄（半角数字とハイフンのみ許可）
-     メールアドレス … メールアドレスの入力欄（メール形式かどうかを自動チェック）
-     日付           … 日付の入力欄
+   【使える種類と、それぞれの入力チェック内容】
+     氏名           … 名前の入力欄（文字種の制限なし）
+     住所           … 郵便番号欄と住所欄がセットで表示される。郵便番号を7桁入力すると
+                      都道府県〜町域名まで自動入力され、続けて番地・建物名を
+                      入力できる（日本郵便のデータを無料公開しているzipcloudを使用）。
+                      必須の質問にすると、郵便番号・住所の両方が入力必須になる
+     電話番号       … 半角数字のみ。ハイフンは使えません（例：09012345678）
+     メールアドレス … 「◯◯@◯◯.◯◯」のメール形式かどうかを自動チェック
+     日付           … 日付の入力欄（カレンダー選択）
      選択式         … 選択肢の中から1つ選ぶ形式（ラジオボタン）
-     短い文章       … 自由に1行で記入する形式（例：ご趣味、お好きな食べ物、ご意見など）
+     短い文章       … 自由に1行で記入する形式。「入力制限」「文字数上限」を
+                      組み合わせて文字種・文字数を制限できる
+                      （例：ご趣味、お好きな食べ物、ご意見など）
+     銀行名         … 銀行名の入力欄。「三菱」など一部を入力すると、
+                      「三菱UFJ銀行」のように候補が下に表示され、タップで入力できる
+                      （日本国内の全金融機関データを外部の無料サービスから取得して使用）
+     支店名         … 支店名の入力欄。この質問より前にある「銀行名」の質問で
+                      候補から銀行を選んでいると、その銀行の支店だけが
+                      候補として絞り込まれて表示される（例：「東京」→「東京営業部」）。
+                      前に銀行名の質問が無い、またはまだ銀行が選ばれていない場合は
+                      その旨が表示され、候補なしで自由入力になる
+     口座種別       … 「普通」「当座」の2択があらかじめ用意された選択式
+                      （選択肢を書く必要はありません）
+     口座番号       … 半角数字ちょうど7桁のみ（例：0123456）。日本国内の銀行の
+                      口座番号は7桁が標準のため、7桁に満たない場合は先頭に0を
+                      補って入力してもらう形式です（多くの銀行サイトと同じ方式）
    ============================================================================ */
 const QUESTIONS_TEXT = `
 ===
-質問文：金融機関名
-説明文：金融機関名をご入力ください。
-種類：短い文章
+質問文：お振込先の金融機関名
+説明文：金融機関名の一部を入力すると候補が表示されます（例：「三菱」→「三菱UFJ銀行」）。
+種類：銀行名
 必須：はい
-文字数上限：20
 ===
-質問文：支店名
-説明文：支店名をご入力ください。
-種類：短い文章
+質問文：お振込先の支店名
+説明文：支店名の一部を入力すると候補が表示されます（例：「東京」→「東京営業部」）。
+種類：支店名
 必須：はい
-文字数上限：20
+===
+質問文：口座種別
+種類：口座種別
+必須：はい
 ===
 質問文：口座番号
-説明文：口座番号をご入力ください。
-種類：電話番号
+説明文：半角数字7桁でご入力ください（例：0123456）。7桁に満たない場合は先頭に0を補ってください。
+種類：口座番号
 必須：はい
-文字数上限：8
 ===
 質問文：氏名（漢字）
 説明文：フルネームでご入力ください。
@@ -450,11 +518,10 @@ const QUESTIONS_TEXT = `
 種類：氏名
 必須：はい
 ===
-質問文：現住所
-説明文：都道府県からご入力ください。集合住宅の場合は必ず建物名、号室までご入力ください。
-種類：短い文章
+質問文：ご住所
+説明文：郵便番号を入力すると住所が自動入力されます。続けて番地・建物名をご入力ください。
+種類：住所
 必須：はい
-文字数上限：200
 ===
 質問文：電話番号
 説明文：半角数字でご入力ください。
@@ -476,9 +543,20 @@ const TYPE_MAP = {
   "日付": "date",
   "選択式": "single_choice",
   "短い文章": "short_text",
+  "銀行名": "bank_name",
+  "支店名": "branch_name",
+  "口座種別": "account_type",
+  "口座番号": "account_number",
 };
 
 // QUESTIONS_TEXT（人が読み書きする形式）を、画面表示用のデータに変換する
+// 「入力制限：〇〇」の日本語表記 → 内部処理用のパターン名への対応表
+const RESTRICTION_MAP = {
+  "半角数字のみ": "digits",
+  "半角英数字のみ": "alnum_hw",
+  "全角文字のみ": "fullwidth",
+};
+
 function parseQuestionsText(text){
   const blocks = text
     .split(/^===\s*$/m)
@@ -510,12 +588,23 @@ function parseQuestionsText(text){
       else if (key === "種類") q.type = TYPE_MAP[value] || "short_text";
       else if (key === "必須") q.required = (value === "はい");
       else if (key === "文字数上限") q.maxLength = parseInt(value, 10) || null;
+      else if (key === "入力制限") q.restriction = RESTRICTION_MAP[value] || null;
       else if (key.startsWith("選択肢")) q.options.push(value);
     });
 
-    if (q.type === "email") q.validation = "email";
-    else if (q.type === "tel") q.validation = "phone";
-    else if (q.type === "short_text" && q.maxLength) q.validation = { maxLength: q.maxLength };
+    if (q.type === "email") q.pattern = "email";
+    else if (q.type === "tel") q.pattern = "phone";
+    else if (q.type === "account_number"){
+      q.pattern = "digits";
+      q.exactLength = 7; // 日本の銀行口座番号は半角数字7桁が標準の仕様
+    } else if (q.type === "short_text" && q.restriction){
+      q.pattern = q.restriction; // 「短い文章」は入力制限で文字種を指定できる
+    }
+
+    if (q.type === "account_type"){
+      if (q.options.length === 0) q.options = ["普通", "当座"];
+      q.type = "single_choice"; // 見た目・動作は選択式と共通
+    }
 
     return q;
   });
@@ -593,6 +682,70 @@ const gasRun = GAS_API_URL.startsWith("http")
 
 const stage = document.getElementById("stage");
 
+/* ---------------------------------------------------------
+   銀行名・支店名の入力補助（オートコンプリート）
+   ----------------------------------------------------------
+   ・日本国内の金融機関データを無料公開している「銀行くん」
+     （bank.teraren.com）というサービスの「検索API」を使用。
+     入力のたびに、その時点の入力内容でサーバーに検索をお願いする方式
+     （0.25秒入力が止まってから問い合わせるため、1文字ごとには送らない）。
+   ・同じ検索語には結果をキャッシュし、同じ問い合わせを繰り返さないようにする。
+   --------------------------------------------------------- */
+const bankSearchCache = {};   // 検索語ごとの銀行検索結果キャッシュ
+const branchSearchCache = {}; // "銀行コード:検索語" ごとの支店検索結果キャッシュ
+const selectedBankCode = {};  // 質問IDごとに「候補から選ばれた銀行のコード」を記録
+
+function fetchBankSuggestions(query){
+  const q = query.trim();
+  if (!q) return Promise.resolve([]);
+  if (bankSearchCache[q]) return Promise.resolve(bankSearchCache[q]);
+
+  return fetch(`https://bank.teraren.com/banks/search.json?name=${encodeURIComponent(q)}`)
+    .then(res => {
+      if (!res.ok) throw new Error("bank search failed");
+      return res.json();
+    })
+    .then(list => {
+      const results = Array.isArray(list) ? list.slice(0, 8) : [];
+      bankSearchCache[q] = results;
+      return results;
+    })
+    .catch(err => {
+      console.warn("銀行データの検索に失敗しました:", err);
+      return [];
+    });
+}
+
+function fetchBranchSuggestions(bankCode, query){
+  const q = query.trim();
+  if (!q) return Promise.resolve([]);
+  const cacheKey = bankCode + ":" + q;
+  if (branchSearchCache[cacheKey]) return Promise.resolve(branchSearchCache[cacheKey]);
+
+  return fetch(`https://bank.teraren.com/banks/${bankCode}/branches/search.json?name=${encodeURIComponent(q)}`)
+    .then(res => {
+      if (!res.ok) throw new Error("branch search failed");
+      return res.json();
+    })
+    .then(list => {
+      const results = Array.isArray(list) ? list.slice(0, 8) : [];
+      branchSearchCache[cacheKey] = results;
+      return results;
+    })
+    .catch(err => {
+      console.warn("支店データの検索に失敗しました:", err);
+      return [];
+    });
+}
+
+// 「支店名」の質問より前にある、直近の「銀行名」質問を探す
+function findPrecedingBankQuestion(index){
+  for (let i = index - 1; i >= 0; i--){
+    if (QUESTIONS[i].type === "bank_name") return QUESTIONS[i];
+  }
+  return null;
+}
+
 function validate(q, rawValue){
   const value = (rawValue ?? "").trim();
 
@@ -602,17 +755,35 @@ function validate(q, rawValue){
   if (value === ""){
     return null; // 任意項目で未入力ならOK
   }
-  if (q.validation === "email"){
+  if (q.pattern === "email"){
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!re.test(value)) return "メールアドレスの形式で入力してください。";
   }
-  if (q.validation === "phone"){
-    const re = /^[0-9-]+$/;
-    if (!re.test(value)) return "半角数字とハイフンのみで入力してください。";
+  if (q.pattern === "phone"){
+    const re = /^[0-9]+$/;
+    if (!re.test(value)) return "半角数字のみで入力してください（ハイフンは使えません）。";
   }
-  if (q.validation && q.validation.maxLength){
-    if (value.length > q.validation.maxLength){
-      return `${q.validation.maxLength}文字以内で入力してください。`;
+  if (q.pattern === "digits"){
+    const re = /^[0-9]+$/;
+    if (!re.test(value)) return "半角数字のみで入力してください。";
+  }
+  if (q.pattern === "alnum_hw"){
+    const re = /^[A-Za-z0-9]+$/;
+    if (!re.test(value)) return "半角英数字のみで入力してください。";
+  }
+  if (q.pattern === "fullwidth"){
+    // 半角英数字・半角記号・半角カタカナ以外（全角文字）だけを許可する簡易チェック
+    const re = /^[^\x01-\x7E\uFF61-\uFF9F]+$/;
+    if (!re.test(value)) return "全角文字のみで入力してください。";
+  }
+  if (q.exactLength){
+    if (value.length !== q.exactLength){
+      return `半角数字${q.exactLength}桁で入力してください（${q.exactLength}桁に満たない場合は先頭に0を補ってください）。`;
+    }
+  }
+  if (q.maxLength){
+    if (value.length > q.maxLength){
+      return `${q.maxLength}文字以内で入力してください。`;
     }
   }
   return null;
@@ -658,9 +829,50 @@ function renderQuestionScreen(index){
         <span class="option-text">${escapeHtml(opt)}</span>
       </label>
     `).join("") + `</div>`;
+  } else if (q.type === "bank_name"){
+    bodyHtml = `
+      <input type="text" id="answerInput" value="${escapeHtml(savedValue)}" placeholder="銀行名の一部を入力（例：三菱）" autocomplete="off">
+      <div class="bank-suggestions" id="bankSuggestions" style="display:none;"></div>
+    `;
+  } else if (q.type === "branch_name"){
+    const bankQ = findPrecedingBankQuestion(index);
+    const linkedBankCode = bankQ ? selectedBankCode[bankQ.id] : null;
+    const hintHtml = !bankQ
+      ? `<p class="bank-link-hint">この質問より前に「銀行名」の質問が無いため、候補なしで自由に入力できます。</p>`
+      : !linkedBankCode
+        ? `<p class="bank-link-hint">先に「${escapeHtml(bankQ.label)}」で候補から金融機関を選択すると、支店の候補が表示されます。</p>`
+        : "";
+    bodyHtml = `
+      <input type="text" id="answerInput" value="${escapeHtml(savedValue)}" placeholder="支店名の一部を入力（例：東京）" autocomplete="off">
+      <div class="bank-suggestions" id="bankSuggestions" style="display:none;"></div>
+      ${hintHtml}
+    `;
+  } else if (q.type === "address"){
+    const savedZip = answers[q.id + "_zip"] ?? "";
+    const savedAddr = answers[q.id + "_addr"] ?? "";
+    bodyHtml = `
+      <label class="address-sublabel" for="zipInput">郵便番号</label>
+      <input type="tel" id="zipInput" value="${escapeHtml(savedZip)}" placeholder="例：123-4567" maxlength="8" autocomplete="off">
+      <div class="error-msg" id="zipErrorMsg"></div>
+      <label class="address-sublabel address-sublabel-second" for="addressInput">住所</label>
+      <input type="text" id="addressInput" value="${escapeHtml(savedAddr)}" placeholder="郵便番号を入力すると自動入力されます" autocomplete="off">
+    `;
   } else {
-    const inputType = q.type === "email" ? "email" : q.type === "tel" ? "tel" : "text";
-    bodyHtml = `<input type="${inputType}" id="answerInput" value="${escapeHtml(savedValue)}" placeholder="入力してください">`;
+    const inputType = q.type === "email" ? "email" : (q.type === "tel" || q.type === "account_number") ? "tel" : "text";
+    const placeholderMap = {
+      name: "例：山田 太郎",
+      tel: "例：09012345678（ハイフンなし）",
+      email: "例：sample@example.com",
+      date: "例：2026-08-01",
+      account_number: "例：0123456（半角数字7桁）",
+    };
+    const placeholder = placeholderMap[q.type] || (
+      q.pattern === "digits" ? "半角数字のみで入力してください" :
+      q.pattern === "alnum_hw" ? "半角英数字のみで入力してください" :
+      q.pattern === "fullwidth" ? "全角文字のみで入力してください" :
+      "入力してください"
+    );
+    bodyHtml = `<input type="${inputType}" id="answerInput" value="${escapeHtml(savedValue)}" placeholder="${escapeHtml(placeholder)}">`;
   }
 
   const html = `
@@ -689,6 +901,163 @@ function renderQuestionScreen(index){
         document.getElementById("errorMsg").textContent = "";
       });
     });
+  } else if (q.type === "bank_name"){
+    const input = document.getElementById("answerInput");
+    const suggestionsEl = document.getElementById("bankSuggestions");
+    let debounceTimer = null;
+
+    input.addEventListener("input", () => {
+      answers[q.id] = input.value;
+      selectedBankCode[q.id] = null; // 手入力で変更されたら、それまでの選択は無効にする
+      document.getElementById("errorMsg").textContent = "";
+      input.classList.remove("error");
+
+      clearTimeout(debounceTimer);
+      const query = input.value;
+      if (!query.trim()){
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+      debounceTimer = setTimeout(() => {
+        fetchBankSuggestions(query).then(matches => {
+          if (matches.length === 0){
+            suggestionsEl.style.display = "none";
+            suggestionsEl.innerHTML = "";
+            return;
+          }
+          suggestionsEl.innerHTML = matches.map(bank => {
+            const displayName = (bank.normalize && bank.normalize.name) || bank.name;
+            return `<div class="bank-suggestion-item" data-name="${escapeHtml(displayName)}" data-code="${escapeHtml(bank.code)}">
+              <span class="bank-suggestion-name">${escapeHtml(displayName)}</span>
+              <span class="bank-suggestion-code">${escapeHtml(bank.code)}</span>
+            </div>`;
+          }).join("");
+          suggestionsEl.style.display = "block";
+
+          suggestionsEl.querySelectorAll(".bank-suggestion-item").forEach(item => {
+            item.addEventListener("click", () => {
+              input.value = item.dataset.name;
+              answers[q.id] = item.dataset.name;
+              selectedBankCode[q.id] = item.dataset.code; // 後続の「支店名」質問から参照される
+              suggestionsEl.style.display = "none";
+              suggestionsEl.innerHTML = "";
+            });
+          });
+        });
+      }, 250); // 連続入力中は毎回問い合わせず、入力が止まってから検索する
+    });
+
+    setTimeout(() => input.focus(), 50);
+
+  } else if (q.type === "branch_name"){
+    const input = document.getElementById("answerInput");
+    const suggestionsEl = document.getElementById("bankSuggestions");
+    const bankQ = findPrecedingBankQuestion(index);
+    const linkedBankCode = bankQ ? selectedBankCode[bankQ.id] : null;
+    let debounceTimer = null;
+
+    input.addEventListener("input", () => {
+      answers[q.id] = input.value;
+      document.getElementById("errorMsg").textContent = "";
+      input.classList.remove("error");
+
+      clearTimeout(debounceTimer);
+      const query = input.value;
+      if (!query.trim() || !linkedBankCode){
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+      debounceTimer = setTimeout(() => {
+        fetchBranchSuggestions(linkedBankCode, query).then(matches => {
+          if (matches.length === 0){
+            suggestionsEl.style.display = "none";
+            suggestionsEl.innerHTML = "";
+            return;
+          }
+          suggestionsEl.innerHTML = matches.map(branch => {
+            const displayName = (branch.normalize && branch.normalize.name) || branch.name;
+            return `<div class="bank-suggestion-item" data-name="${escapeHtml(displayName)}">
+              <span class="bank-suggestion-name">${escapeHtml(displayName)}</span>
+              <span class="bank-suggestion-code">${escapeHtml(branch.code)}</span>
+            </div>`;
+          }).join("");
+          suggestionsEl.style.display = "block";
+
+          suggestionsEl.querySelectorAll(".bank-suggestion-item").forEach(item => {
+            item.addEventListener("click", () => {
+              input.value = item.dataset.name;
+              answers[q.id] = item.dataset.name;
+              suggestionsEl.style.display = "none";
+              suggestionsEl.innerHTML = "";
+            });
+          });
+        });
+      }, 250);
+    });
+
+    setTimeout(() => input.focus(), 50);
+
+  } else if (q.type === "address"){
+    const zipInput = document.getElementById("zipInput");
+    const addressInput = document.getElementById("addressInput");
+    const zipErrorEl = document.getElementById("zipErrorMsg");
+    let debounceTimer = null;
+
+    // 確認画面などで使う「〒123-4567 東京都...」形式の1本の文字列にまとめて保存する
+    function syncCombinedAnswer(){
+      const zip = zipInput.value.trim();
+      const addr = addressInput.value.trim();
+      answers[q.id + "_zip"] = zip;
+      answers[q.id + "_addr"] = addr;
+      answers[q.id] = zip ? `〒${zip} ${addr}`.trim() : addr;
+    }
+
+    zipInput.addEventListener("input", () => {
+      syncCombinedAnswer();
+      document.getElementById("errorMsg").textContent = "";
+      zipErrorEl.textContent = "";
+      zipInput.classList.remove("error");
+
+      clearTimeout(debounceTimer);
+      const digitsOnly = zipInput.value.replace(/[^0-9]/g, "");
+      if (digitsOnly.length !== 7) return;
+
+      debounceTimer = setTimeout(() => {
+        fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${digitsOnly}`)
+          .then(res => {
+            if (!res.ok) throw new Error("zip lookup failed");
+            return res.json();
+          })
+          .then(data => {
+            if (data.status !== 200 || !data.results || data.results.length === 0){
+              zipErrorEl.textContent = "この郵便番号に該当する住所が見つかりませんでした。住所欄に直接ご入力ください。";
+              return;
+            }
+            const r = data.results[0];
+            addressInput.value = `${r.address1}${r.address2}${r.address3}`;
+            syncCombinedAnswer();
+            addressInput.focus();
+            // カーソルを末尾に移動し、続けて番地・建物名を入力できるようにする
+            const len = addressInput.value.length;
+            addressInput.setSelectionRange(len, len);
+          })
+          .catch(err => {
+            console.warn("郵便番号検索に失敗しました:", err);
+            zipErrorEl.textContent = "住所の自動取得に失敗しました。住所欄に直接ご入力ください。";
+          });
+      }, 300);
+    });
+
+    addressInput.addEventListener("input", () => {
+      syncCombinedAnswer();
+      document.getElementById("errorMsg").textContent = "";
+      addressInput.classList.remove("error");
+    });
+
+    setTimeout(() => zipInput.focus(), 50);
+
   } else {
     const input = document.getElementById("answerInput");
     input.addEventListener("input", () => {
@@ -709,6 +1078,42 @@ function renderQuestionScreen(index){
 
   document.getElementById("btnNext").addEventListener("click", () => {
     const q = QUESTIONS[index];
+
+    if (q.type === "address"){
+      const zip = document.getElementById("zipInput").value.trim();
+      const addr = document.getElementById("addressInput").value.trim();
+      const zipDigits = zip.replace(/[^0-9]/g, "");
+      const zipErrorEl = document.getElementById("zipErrorMsg");
+      const errorEl = document.getElementById("errorMsg");
+      zipErrorEl.textContent = "";
+      errorEl.textContent = "";
+
+      if (q.required && !zip){
+        zipErrorEl.textContent = "郵便番号は必須です。";
+        return;
+      }
+      if (zip && zipDigits.length !== 7){
+        zipErrorEl.textContent = "郵便番号は半角数字7桁で入力してください。";
+        return;
+      }
+      if (q.required && !addr){
+        errorEl.textContent = "住所は必須です。";
+        return;
+      }
+
+      answers[q.id + "_zip"] = zip;
+      answers[q.id + "_addr"] = addr;
+      answers[q.id] = zip ? `〒${zip} ${addr}`.trim() : addr;
+
+      if (index === QUESTIONS.length - 1){
+        renderConfirmScreen();
+      } else {
+        current += 1;
+        renderQuestionScreen(current);
+      }
+      return;
+    }
+
     const value = q.type === "single_choice" ? (answers[q.id] ?? "") : (document.getElementById("answerInput").value ?? "");
     const errorText = validate(q, value);
     const errorEl = document.getElementById("errorMsg");
@@ -808,9 +1213,9 @@ function renderConfirmScreen(){
 function renderThanksScreen(){
   const hasRedirect = !!FORM_SETTINGS.redirectUrl;
 
-  const hintOrCountdownHtml = hasRedirect
+  const countdownHtml = hasRedirect
     ? `<p class="close-hint" id="redirectHint">5秒後に自動的に移動します…</p>`
-    : `<p class="close-hint" id="closeHint" style="display:none;">${escapeHtml(FORM_SETTINGS.closeHint)}</p>`;
+    : "";
 
   const html = `
     <div class="screen active thanks-screen" id="screen-thanks">
@@ -822,7 +1227,7 @@ function renderThanksScreen(){
         </div>
         <h2 class="thanks-title">${escapeHtml(FORM_SETTINGS.thanksTitle)}</h2>
         <p class="thanks-desc">${FORM_SETTINGS.thanksDesc.replaceAll("<br>", "\n").split("\n").map(escapeHtml).join("<br>")}</p>
-        ${hintOrCountdownHtml}
+        ${countdownHtml}
       </div>
       <div class="footer">
         <button class="btn btn-primary" id="btnClose">${escapeHtml(FORM_SETTINGS.closeButtonLabel)}</button>
@@ -849,22 +1254,9 @@ function renderThanksScreen(){
       }
       if (hintEl) hintEl.textContent = remaining + "秒後に自動的に移動します…";
     }, 1000);
-
-  } else {
-    // 移動先URL未設定の場合は、従来通り「タブを閉じる」動作
-    document.getElementById("btnClose").addEventListener("click", () => {
-      try {
-        window.close();
-      } catch (e) {
-        // ブラウザによっては window.close() が例外を投げる場合がある
-      }
-      // ブラウザの制限でタブが閉じられなかった場合のフォールバック表示
-      setTimeout(() => {
-        const hint = document.getElementById("closeHint");
-        if (hint) hint.style.display = "block";
-      }, 300);
-    });
   }
+  // 移動先URLが未設定の場合、「完了」ボタンは表示されるがクリックしても何も起きない
+  // （押しても画面はその場に留まる）
 }
 
 
