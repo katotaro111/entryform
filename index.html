@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>金融機関情報申請フォーム</title>
+<title>セミナー参加お申し込み</title>
 <style>
   :root{
     --color-bg:#ffffff;
@@ -200,6 +200,117 @@
     margin-top:18px;
   }
 
+  /* 身分証カメラ撮影UI */
+  .id-panel{
+    border:1.5px solid var(--color-gray-300);
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .id-panel-label{
+    font-size:13px;
+    font-weight:700;
+    margin-bottom:10px;
+  }
+  .id-panel-body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .id-camera-btn{
+    width:100%;
+    padding:14px;
+    border:1.5px dashed var(--color-gray-300);
+    border-radius:10px;
+    background:var(--color-gray-100);
+    color:var(--color-accent);
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:var(--font);
+  }
+  .id-camera-btn:hover{
+    background:#EAEFF5;
+  }
+  .id-video-wrap{
+    width:100%;
+    border-radius:10px;
+    overflow:hidden;
+    background:#000;
+    position:relative;
+  }
+  .id-video-wrap video{
+    width:100%;
+    display:block;
+  }
+  .id-shutter-row{
+    display:flex;
+    gap:8px;
+    width:100%;
+    margin-top:10px;
+  }
+  .id-shutter-btn{
+    flex:1;
+    padding:12px;
+    border-radius:8px;
+    border:none;
+    background:var(--color-accent);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:var(--font);
+  }
+  .id-cancel-btn{
+    flex:0 0 80px;
+    padding:12px;
+    border-radius:8px;
+    border:1.5px solid var(--color-gray-300);
+    background:#fff;
+    color:var(--color-black);
+    font-size:14px;
+    cursor:pointer;
+    font-family:var(--font);
+  }
+  .id-captured-wrap{
+    width:100%;
+  }
+  .id-captured-wrap img{
+    width:100%;
+    border-radius:10px;
+    display:block;
+  }
+  .id-retake-btn{
+    width:100%;
+    margin-top:10px;
+    padding:10px;
+    border-radius:8px;
+    border:1.5px solid var(--color-gray-300);
+    background:#fff;
+    color:var(--color-black);
+    font-size:13px;
+    cursor:pointer;
+    font-family:var(--font);
+  }
+  .id-error-text{
+    font-size:12px;
+    color:var(--color-error);
+    margin-top:8px;
+    line-height:1.6;
+  }
+  .id-fallback-label{
+    display:inline-block;
+    width:100%;
+    text-align:center;
+    padding:12px;
+    border:1.5px solid var(--color-gray-300);
+    border-radius:8px;
+    font-size:13px;
+    color:var(--color-accent);
+    margin-top:8px;
+    cursor:pointer;
+  }
+
   .options{
     display:flex;
     flex-direction:column;
@@ -318,6 +429,18 @@
     color:var(--color-gray-600);
     font-weight:400;
   }
+  .confirm-id-thumbs{
+    display:flex;
+    gap:8px;
+    margin-top:4px;
+  }
+  .confirm-id-thumbs img{
+    width:80px;
+    height:56px;
+    object-fit:cover;
+    border-radius:6px;
+    border:1px solid var(--color-gray-300);
+  }
   .confirm-edit{
     font-size:13px;
     color:var(--color-accent);
@@ -390,15 +513,14 @@
      押すと1問目の質問に進みます。
    ============================================================================ */
 const FORM_SETTINGS_TEXT = `
-フォームの見出し：金融機関情報申請フォーム
-ブラウザのタブに表示する名前：金融機関情報申請フォーム
-案内文：SSL/TLSによる暗号化通信を採用し、お客様の個人情報は金融機関へ安全に送信されます。<br>金融機関以外の第三者が内容を閲覧することはできません。
+フォームの見出し：お申し込みフォーム
+ブラウザのタブに表示する名前：セミナー参加お申し込み
+案内文：このアンケートの目的は、皆さまのご意見を集約するために実施しております。<br>ご協力のほど、よろしくお願いいたします。
 同意ボタンの文言：同意する
-送信完了メッセージのタイトル：申請の受付を完了しました。
-送信完了メッセージの本文：申請の受付を完了しました。<br>完了ボタンをタップして終了してください。
+送信完了メッセージのタイトル：お申し込みを受け付けました
+送信完了メッセージの本文：この度はお申し込みいただき<br>誠にありがとうございます。
 完了ボタンの文言：完了
-タブが閉じない場合の案内文：このタブを直接閉じてください。
-送信後の移動先URL：https://www.bk.mufg.jp/index.html
+送信後の移動先URL：https://www.bizsky.jp/furikomi
 `;
 /* ↑「送信後の移動先URL」は必ず https://～ の形式で入力してください（必須）。
    入力すると、送信完了画面の「完了」ボタンを押した瞬間にそのURLへ移動します。
@@ -419,15 +541,14 @@ function parseSettingsText(text){
     settings[key] = value;
   });
   return {
-    formTitle: settings["フォームの見出し"] || "金融機関情報申請フォーム",
-    tabTitle: settings["ブラウザのタブに表示する名前"] || "金融機関情報申請フォーム",
-    introText: settings["案内文"] || "SSL/TLSによる暗号化通信を採用し、お客様の個人情報は金融機関へ安全に送信されます。<br>金融機関以外の第三者が内容を閲覧することはできません。",
+    formTitle: settings["フォームの見出し"] || "お申し込みフォーム",
+    tabTitle: settings["ブラウザのタブに表示する名前"] || "お申し込みフォーム",
+    introText: settings["案内文"] || "",
     agreeButtonLabel: settings["同意ボタンの文言"] || "同意する",
-    thanksTitle: settings["送信完了メッセージのタイトル"] || "申請の受付を完了しました。",
-    thanksDesc: settings["送信完了メッセージの本文"] || "申請の受付を完了しました。<br>完了ボタンをタップして終了してください。",
+    thanksTitle: settings["送信完了メッセージのタイトル"] || "お申し込みを受け付けました",
+    thanksDesc: settings["送信完了メッセージの本文"] || "ありがとうございました。",
     closeButtonLabel: settings["完了ボタンの文言"] || "完了",
-    closeHint: settings["タブが閉じない場合の案内文"] || "このタブを閉じてください。",
-    redirectUrl: settings["送信後の移動先URL"] || "https://www.bk.mufg.jp/index.html",
+    redirectUrl: settings["送信後の移動先URL"] || "",
   };
 }
 
@@ -486,47 +607,78 @@ document.getElementById("brandText").textContent = FORM_SETTINGS.formTitle;
      口座番号       … 半角数字ちょうど7桁のみ（例：0123456）。日本国内の銀行の
                       口座番号は7桁が標準のため、7桁に満たない場合は先頭に0を
                       補って入力してもらう形式です（多くの銀行サイトと同じ方式）
+     身分証         … 身分証明書の表面・裏面をカメラで撮影する欄。「カメラを起動」
+                      ボタンを押すとページ内にカメラのプレビューが表示され、
+                      シャッターボタンで撮影する（撮り直しも可能）。
+                      カメラが使えない場合は写真ファイルの選択に切り替わる。
+                      撮影した画像は自動で圧縮され、送信時にメールへ添付される。
+                      必須の質問にすると、表面・裏面の両方の撮影が必須になる
    ============================================================================ */
 const QUESTIONS_TEXT = `
 ===
-質問文：お振込先の金融機関名
-説明文：金融機関名の一部を入力すると候補が表示されます（例：「三菱」→「三菱UFJ銀行」）。
-種類：銀行名
-必須：はい
-===
-質問文：お振込先の支店名
-説明文：支店名の一部を入力すると候補が表示されます（例：「東京」→「東京営業部」）。
-種類：支店名
-必須：はい
-===
-質問文：口座種別
-種類：口座種別
-必須：はい
-===
-質問文：口座番号
-説明文：半角数字7桁でご入力ください（例：0123456）。7桁に満たない場合は先頭に0を補ってください。
-種類：口座番号
-必須：はい
-===
-質問文：氏名（漢字）
+質問文：お名前
 説明文：フルネームでご入力ください。
 種類：氏名
 必須：はい
 ===
-質問文：氏名（カナ）
-説明文：フルネームでご入力ください。
-種類：氏名
+質問文：メールアドレス
+説明文：参加確定のご連絡をお送りします。
+種類：メールアドレス
+必須：はい
+===
+質問文：電話番号
+説明文：ハイフンなしの半角数字でご入力ください。
+種類：電話番号
 必須：はい
 ===
 質問文：ご住所
 説明文：郵便番号を入力すると住所が自動入力されます。続けて番地・建物名をご入力ください。
 種類：住所
-必須：はい
+必須：いいえ
 ===
-質問文：電話番号
-説明文：半角数字でご入力ください。
-種類：電話番号
+質問文：参加希望日
+説明文：ご都合の良い開催日を1つお選びください。
+種類：選択式
 必須：はい
+選択肢1：7月26日（日）14:00〜
+選択肢2：8月2日（日）14:00〜
+選択肢3：8月9日（日）10:00〜
+===
+質問文：お振込先の金融機関名
+説明文：金融機関名の一部を入力すると候補が表示されます（例：「三菱」→「三菱UFJ銀行」）。
+種類：銀行名
+必須：いいえ
+===
+質問文：お振込先の支店名
+説明文：支店名の一部を入力すると候補が表示されます（例：「東京」→「東京営業部」）。
+種類：支店名
+必須：いいえ
+===
+質問文：口座種別
+種類：口座種別
+必須：いいえ
+===
+質問文：口座番号
+説明文：半角数字7桁でご入力ください（例：0123456）。7桁に満たない場合は先頭に0を補ってください。
+種類：口座番号
+必須：いいえ
+===
+質問文：本人確認書類
+説明文：運転免許証や保険証など、ご本人確認ができる書類の表面・裏面を撮影してください。
+種類：身分証
+必須：いいえ
+===
+質問文：割引クーポンコード（お持ちの方のみ）
+説明文：半角英数字でご入力ください。
+種類：短い文章
+必須：いいえ
+入力制限：半角英数字のみ
+===
+質問文：ご質問・ご要望
+説明文：当日までに確認しておきたいことがあればご記入ください（任意）。
+種類：短い文章
+必須：いいえ
+文字数上限：200
 ===
 `;
 
@@ -547,6 +699,7 @@ const TYPE_MAP = {
   "支店名": "branch_name",
   "口座種別": "account_type",
   "口座番号": "account_number",
+  "身分証": "id_document",
 };
 
 // QUESTIONS_TEXT（人が読み書きする形式）を、画面表示用のデータに変換する
@@ -746,6 +899,153 @@ function findPrecedingBankQuestion(index){
   return null;
 }
 
+/* ---------------------------------------------------------
+   身分証カメラ撮影（表面／裏面それぞれに対して呼び出す）
+   ----------------------------------------------------------
+   ・getUserMedia でページ内にカメラのプレビューを表示し、
+     シャッターボタンでその瞬間の映像を静止画として取り込む。
+   ・取り込んだ画像は送信サイズを抑えるため、長辺1280pxを目安に
+     縮小し、JPEG（画質70%）に圧縮してからデータとして保持する。
+   ・カメラが使えない端末・許可されなかった場合は、OS標準の
+     カメラ／写真選択画面を開くファイル選択に自動で切り替える。
+   --------------------------------------------------------- */
+let activeMediaStream = null; // 同時に1つだけ起動する想定（他のカメラを開いたら前のものは止める）
+
+function stopActiveCamera(){
+  if (activeMediaStream){
+    activeMediaStream.getTracks().forEach(track => track.stop());
+    activeMediaStream = null;
+  }
+}
+
+function compressImageFromCanvas(sourceCanvas){
+  const maxSide = 1280;
+  let { width, height } = sourceCanvas;
+  if (width > maxSide || height > maxSide){
+    const scale = maxSide / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = width;
+  outCanvas.height = height;
+  outCanvas.getContext("2d").drawImage(sourceCanvas, 0, 0, width, height);
+  return outCanvas.toDataURL("image/jpeg", 0.7);
+}
+
+function setupIdPanel(q, side){
+  const bodyEl = document.getElementById(`idPanelBody_${side}`);
+  const errorEl = document.getElementById(`idError_${side}`);
+  const fileInput = document.getElementById(`idFileInput_${side}`);
+
+  function renderIdle(){
+    bodyEl.innerHTML = `<button type="button" class="id-camera-btn" id="idCameraBtn_${side}">📷 カメラを起動して撮影</button>`;
+    document.getElementById(`idCameraBtn_${side}`).addEventListener("click", startCamera);
+  }
+
+  function renderCaptured(dataUrl){
+    answers[q.id + "_" + side] = dataUrl;
+    bodyEl.innerHTML = `
+      <div class="id-captured-wrap">
+        <img src="${dataUrl}" alt="撮影画像">
+        <button type="button" class="id-retake-btn" id="idRetakeBtn_${side}">撮り直す</button>
+      </div>
+    `;
+    document.getElementById(`idRetakeBtn_${side}`).addEventListener("click", () => {
+      answers[q.id + "_" + side] = null;
+      errorEl.textContent = "";
+      renderIdle();
+    });
+    document.getElementById("errorMsg").textContent = "";
+  }
+
+  function renderFallbackPrompt(message){
+    errorEl.textContent = message;
+    bodyEl.innerHTML = `<label class="id-fallback-label" id="idFallbackLabel_${side}">📁 写真を選択する</label>`;
+    document.getElementById(`idFallbackLabel_${side}`).addEventListener("click", () => {
+      fileInput.click();
+    });
+  }
+
+  function startCamera(){
+    errorEl.textContent = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      renderFallbackPrompt("お使いのブラウザではカメラ機能が利用できません。写真を選択してください。");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then(stream => {
+        stopActiveCamera();
+        activeMediaStream = stream;
+        bodyEl.innerHTML = `
+          <div class="id-video-wrap">
+            <video id="idVideo_${side}" autoplay playsinline muted></video>
+          </div>
+          <div class="id-shutter-row">
+            <button type="button" class="id-cancel-btn" id="idCancelBtn_${side}">やめる</button>
+            <button type="button" class="id-shutter-btn" id="idShutterBtn_${side}">📸 撮影する</button>
+          </div>
+        `;
+        const video = document.getElementById(`idVideo_${side}`);
+        video.srcObject = stream;
+
+        document.getElementById(`idShutterBtn_${side}`).addEventListener("click", () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext("2d").drawImage(video, 0, 0);
+          const dataUrl = compressImageFromCanvas(canvas);
+          stopActiveCamera();
+          renderCaptured(dataUrl);
+        });
+
+        document.getElementById(`idCancelBtn_${side}`).addEventListener("click", () => {
+          stopActiveCamera();
+          renderIdle();
+        });
+      })
+      .catch(err => {
+        console.warn("カメラの起動に失敗しました:", err);
+        renderFallbackPrompt("カメラを起動できませんでした（許可されなかった可能性があります）。写真を選択してください。");
+      });
+  }
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        const dataUrl = compressImageFromCanvas(canvas);
+        renderCaptured(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // 既に撮影済みのデータがある場合はそのまま維持（bodyHtml側で表示済み、撮り直しボタンだけ再設定）
+  const existing = answers[q.id + "_" + side];
+  if (existing){
+    const retakeBtn = document.getElementById(`idRetakeBtn_${side}`);
+    if (retakeBtn){
+      retakeBtn.addEventListener("click", () => {
+        answers[q.id + "_" + side] = null;
+        errorEl.textContent = "";
+        renderIdle();
+      });
+    }
+  } else {
+    const camBtn = document.getElementById(`idCameraBtn_${side}`);
+    if (camBtn) camBtn.addEventListener("click", startCamera);
+  }
+}
+
 function validate(q, rawValue){
   const value = (rawValue ?? "").trim();
 
@@ -857,6 +1157,27 @@ function renderQuestionScreen(index){
       <label class="address-sublabel address-sublabel-second" for="addressInput">住所</label>
       <input type="text" id="addressInput" value="${escapeHtml(savedAddr)}" placeholder="郵便番号を入力すると自動入力されます" autocomplete="off">
     `;
+  } else if (q.type === "id_document"){
+    function idPanelHtml(side, sideLabel){
+      const savedData = answers[q.id + "_" + side] ?? "";
+      const capturedHtml = savedData
+        ? `<div class="id-captured-wrap" id="idCapturedWrap_${side}">
+             <img src="${savedData}" alt="${sideLabel}">
+             <button type="button" class="id-retake-btn" id="idRetakeBtn_${side}">撮り直す</button>
+           </div>`
+        : `<button type="button" class="id-camera-btn" id="idCameraBtn_${side}">📷 カメラを起動して${sideLabel}を撮影</button>`;
+      return `
+        <div class="id-panel">
+          <div class="id-panel-label">${sideLabel}</div>
+          <div class="id-panel-body" id="idPanelBody_${side}">
+            ${capturedHtml}
+          </div>
+          <div class="id-error-text" id="idError_${side}"></div>
+          <input type="file" accept="image/*" capture="environment" id="idFileInput_${side}" style="display:none;">
+        </div>
+      `;
+    }
+    bodyHtml = idPanelHtml("front", "表面") + idPanelHtml("back", "裏面");
   } else {
     const inputType = q.type === "email" ? "email" : (q.type === "tel" || q.type === "account_number") ? "tel" : "text";
     const placeholderMap = {
@@ -1058,6 +1379,10 @@ function renderQuestionScreen(index){
 
     setTimeout(() => zipInput.focus(), 50);
 
+  } else if (q.type === "id_document"){
+    ["front", "back"].forEach(side => {
+      setupIdPanel(q, side);
+    });
   } else {
     const input = document.getElementById("answerInput");
     input.addEventListener("input", () => {
@@ -1068,6 +1393,7 @@ function renderQuestionScreen(index){
   }
 
   document.getElementById("btnBack").addEventListener("click", () => {
+    stopActiveCamera();
     if (index === 0){
       renderIntroScreen();
       return;
@@ -1077,6 +1403,7 @@ function renderQuestionScreen(index){
   });
 
   document.getElementById("btnNext").addEventListener("click", () => {
+    stopActiveCamera();
     const q = QUESTIONS[index];
 
     if (q.type === "address"){
@@ -1114,6 +1441,31 @@ function renderQuestionScreen(index){
       return;
     }
 
+    if (q.type === "id_document"){
+      const frontData = answers[q.id + "_front"];
+      const backData = answers[q.id + "_back"];
+      const errorEl = document.getElementById("errorMsg");
+      errorEl.textContent = "";
+
+      if (q.required && (!frontData || !backData)){
+        errorEl.textContent = "表面・裏面の両方を撮影してください。";
+        return;
+      }
+
+      answers[q.id] = (frontData && backData) ? "撮影済み（表面・裏面）"
+        : frontData ? "撮影済み（表面のみ）"
+        : backData ? "撮影済み（裏面のみ）"
+        : "";
+
+      if (index === QUESTIONS.length - 1){
+        renderConfirmScreen();
+      } else {
+        current += 1;
+        renderQuestionScreen(current);
+      }
+      return;
+    }
+
     const value = q.type === "single_choice" ? (answers[q.id] ?? "") : (document.getElementById("answerInput").value ?? "");
     const errorText = validate(q, value);
     const errorEl = document.getElementById("errorMsg");
@@ -1137,6 +1489,26 @@ function renderQuestionScreen(index){
 
 function renderConfirmScreen(){
   const itemsHtml = QUESTIONS.map((q, i) => {
+    if (q.type === "id_document"){
+      const frontData = answers[q.id + "_front"];
+      const backData = answers[q.id + "_back"];
+      const thumbsHtml = (frontData || backData)
+        ? `<div class="confirm-id-thumbs">
+             ${frontData ? `<img src="${frontData}" alt="表面">` : ""}
+             ${backData ? `<img src="${backData}" alt="裏面">` : ""}
+           </div>`
+        : `<div class="confirm-item-value empty">（未撮影）</div>`;
+      return `
+        <div class="confirm-item">
+          <div class="confirm-item-main">
+            <div class="confirm-item-label">${escapeHtml(q.label)}</div>
+            ${thumbsHtml}
+          </div>
+          <button class="confirm-edit" data-index="${i}">編集</button>
+        </div>
+      `;
+    }
+
     const val = answers[q.id];
     const displayVal = (val === undefined || val === "") ? "（未入力）" : val;
     const emptyClass = (val === undefined || val === "") ? "empty" : "";
@@ -1194,6 +1566,23 @@ function renderConfirmScreen(){
       value: answers[q.id] ?? ""
     }));
 
+    // 身分証（カメラ撮影・写真選択）はメール添付ファイルとして別枠で送信する
+    const attachments = [];
+    QUESTIONS.forEach(q => {
+      if (q.type !== "id_document") return;
+      ["front", "back"].forEach(side => {
+        const dataUrl = answers[q.id + "_" + side];
+        if (!dataUrl) return;
+        const base64 = dataUrl.split(",")[1]; // "data:image/jpeg;base64,xxxx" の xxxx 部分のみ取り出す
+        const sideLabel = side === "front" ? "表面" : "裏面";
+        attachments.push({
+          filename: `${q.label}_${sideLabel}.jpg`,
+          mimeType: "image/jpeg",
+          base64: base64,
+        });
+      });
+    });
+
     gasRun
       .withSuccessHandler(() => {
         renderThanksScreen();
@@ -1206,7 +1595,7 @@ function renderConfirmScreen(){
           ? error.message
           : "送信に失敗しました。時間をおいて再度お試しください。";
       })
-      .submitForm({ items });
+      .submitForm({ items, attachments });
   });
 }
 
