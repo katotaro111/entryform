@@ -607,12 +607,18 @@ document.getElementById("brandText").textContent = FORM_SETTINGS.formTitle;
      口座番号       … 半角数字ちょうど7桁のみ（例：0123456）。日本国内の銀行の
                       口座番号は7桁が標準のため、7桁に満たない場合は先頭に0を
                       補って入力してもらう形式です（多くの銀行サイトと同じ方式）
-     身分証         … 身分証明書の表面・裏面をカメラで撮影する欄。「カメラを起動」
+     書類選択       … 「運転免許証」「健康保険証」「パスポート」「マイナンバーカード」
+                      「在留カード」「その他」の6択があらかじめ用意された選択式
+                      （選択肢を書く必要はありません）。この質問のすぐ後に
+                      「身分証（表面）」「身分証（裏面）」の質問を置くと、
+                      それらの質問文・説明文の中の「{書類名}」という部分が、
+                      ここで選ばれた書類名（例：運転免許証）に自動で置き換わる
+     身分証（表面） … 身分証明書の表面をカメラで撮影する欄。「カメラを起動」
                       ボタンを押すとページ内にカメラのプレビューが表示され、
                       シャッターボタンで撮影する（撮り直しも可能）。
                       カメラが使えない場合は写真ファイルの選択に切り替わる。
-                      撮影した画像は自動で圧縮され、送信時にメールへ添付される。
-                      必須の質問にすると、表面・裏面の両方の撮影が必須になる
+                      撮影した画像は自動で圧縮され、送信時にメールへ添付される
+     身分証（裏面） … 身分証明書の裏面の撮影欄。使い方は「身分証（表面）」と同じ
    ============================================================================ */
 const QUESTIONS_TEXT = `
 ===
@@ -663,9 +669,19 @@ const QUESTIONS_TEXT = `
 種類：口座番号
 必須：いいえ
 ===
-質問文：本人確認書類
-説明文：運転免許証や保険証など、ご本人確認ができる書類の表面・裏面を撮影してください。
-種類：身分証
+質問文：本人確認書類の種類
+説明文：ご提出いただく本人確認書類の種類をお選びください。
+種類：書類選択
+必須：はい
+===
+質問文：{書類名}の表面
+説明文：お手元の{書類名}を、文字がはっきり読み取れるよう明るい場所で撮影してください。反射や影が入らないよう、少し角度を変えてお試しいただくときれいに写ります。
+種類：身分証（表面）
+必須：いいえ
+===
+質問文：{書類名}の裏面
+説明文：続いて、{書類名}の裏面もご撮影をお願いいたします。裏面に記載事項がある書類の場合、確認のため必要となります。
+種類：身分証（裏面）
 必須：いいえ
 ===
 質問文：割引クーポンコード（お持ちの方のみ）
@@ -699,7 +715,9 @@ const TYPE_MAP = {
   "支店名": "branch_name",
   "口座種別": "account_type",
   "口座番号": "account_number",
-  "身分証": "id_document",
+  "書類選択": "document_type",
+  "身分証（表面）": "id_front",
+  "身分証（裏面）": "id_back",
 };
 
 // QUESTIONS_TEXT（人が読み書きする形式）を、画面表示用のデータに変換する
@@ -756,6 +774,14 @@ function parseQuestionsText(text){
 
     if (q.type === "account_type"){
       if (q.options.length === 0) q.options = ["普通", "当座"];
+      q.type = "single_choice"; // 見た目・動作は選択式と共通
+    }
+
+    if (q.type === "document_type"){
+      if (q.options.length === 0){
+        q.options = ["運転免許証", "健康保険証", "パスポート", "マイナンバーカード", "在留カード", "その他"];
+      }
+      q.isDocumentTypeQuestion = true; // 「身分証（表面／裏面）」から{書類名}置き換えの参照先として探すための目印
       q.type = "single_choice"; // 見た目・動作は選択式と共通
     }
 
@@ -899,6 +925,22 @@ function findPrecedingBankQuestion(index){
   return null;
 }
 
+// 「身分証（表面／裏面）」の質問より前にある、直近の「書類選択」質問を探す
+function findPrecedingDocumentTypeQuestion(index){
+  for (let i = index - 1; i >= 0; i--){
+    if (QUESTIONS[i].isDocumentTypeQuestion) return QUESTIONS[i];
+  }
+  return null;
+}
+
+// 質問文・説明文の中の「{書類名}」を、選ばれた書類の種類に置き換える
+function resolveDocumentPlaceholder(text, index){
+  if (!text || !text.includes("{書類名}")) return text;
+  const docQ = findPrecedingDocumentTypeQuestion(index);
+  const docName = (docQ && answers[docQ.id]) ? answers[docQ.id] : "本人確認書類";
+  return text.split("{書類名}").join(docName);
+}
+
 /* ---------------------------------------------------------
    身分証カメラ撮影（表面／裏面それぞれに対して呼び出す）
    ----------------------------------------------------------
@@ -933,26 +975,26 @@ function compressImageFromCanvas(sourceCanvas){
   return outCanvas.toDataURL("image/jpeg", 0.7);
 }
 
-function setupIdPanel(q, side){
-  const bodyEl = document.getElementById(`idPanelBody_${side}`);
-  const errorEl = document.getElementById(`idError_${side}`);
-  const fileInput = document.getElementById(`idFileInput_${side}`);
+function setupIdPanel(q){
+  const bodyEl = document.getElementById(`idPanelBody`);
+  const errorEl = document.getElementById(`idError`);
+  const fileInput = document.getElementById(`idFileInput`);
 
   function renderIdle(){
-    bodyEl.innerHTML = `<button type="button" class="id-camera-btn" id="idCameraBtn_${side}">📷 カメラを起動して撮影</button>`;
-    document.getElementById(`idCameraBtn_${side}`).addEventListener("click", startCamera);
+    bodyEl.innerHTML = `<button type="button" class="id-camera-btn" id="idCameraBtn">📷 カメラを起動して撮影</button>`;
+    document.getElementById(`idCameraBtn`).addEventListener("click", startCamera);
   }
 
   function renderCaptured(dataUrl){
-    answers[q.id + "_" + side] = dataUrl;
+    answers[q.id] = dataUrl;
     bodyEl.innerHTML = `
       <div class="id-captured-wrap">
         <img src="${dataUrl}" alt="撮影画像">
-        <button type="button" class="id-retake-btn" id="idRetakeBtn_${side}">撮り直す</button>
+        <button type="button" class="id-retake-btn" id="idRetakeBtn">撮り直す</button>
       </div>
     `;
-    document.getElementById(`idRetakeBtn_${side}`).addEventListener("click", () => {
-      answers[q.id + "_" + side] = null;
+    document.getElementById(`idRetakeBtn`).addEventListener("click", () => {
+      answers[q.id] = null;
       errorEl.textContent = "";
       renderIdle();
     });
@@ -961,8 +1003,8 @@ function setupIdPanel(q, side){
 
   function renderFallbackPrompt(message){
     errorEl.textContent = message;
-    bodyEl.innerHTML = `<label class="id-fallback-label" id="idFallbackLabel_${side}">📁 写真を選択する</label>`;
-    document.getElementById(`idFallbackLabel_${side}`).addEventListener("click", () => {
+    bodyEl.innerHTML = `<label class="id-fallback-label" id="idFallbackLabel">📁 写真を選択する</label>`;
+    document.getElementById(`idFallbackLabel`).addEventListener("click", () => {
       fileInput.click();
     });
   }
@@ -979,17 +1021,17 @@ function setupIdPanel(q, side){
         activeMediaStream = stream;
         bodyEl.innerHTML = `
           <div class="id-video-wrap">
-            <video id="idVideo_${side}" autoplay playsinline muted></video>
+            <video id="idVideo" autoplay playsinline muted></video>
           </div>
           <div class="id-shutter-row">
-            <button type="button" class="id-cancel-btn" id="idCancelBtn_${side}">やめる</button>
-            <button type="button" class="id-shutter-btn" id="idShutterBtn_${side}">📸 撮影する</button>
+            <button type="button" class="id-cancel-btn" id="idCancelBtn">やめる</button>
+            <button type="button" class="id-shutter-btn" id="idShutterBtn">📸 撮影する</button>
           </div>
         `;
-        const video = document.getElementById(`idVideo_${side}`);
+        const video = document.getElementById(`idVideo`);
         video.srcObject = stream;
 
-        document.getElementById(`idShutterBtn_${side}`).addEventListener("click", () => {
+        document.getElementById(`idShutterBtn`).addEventListener("click", () => {
           const canvas = document.createElement("canvas");
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
@@ -999,7 +1041,7 @@ function setupIdPanel(q, side){
           renderCaptured(dataUrl);
         });
 
-        document.getElementById(`idCancelBtn_${side}`).addEventListener("click", () => {
+        document.getElementById(`idCancelBtn`).addEventListener("click", () => {
           stopActiveCamera();
           renderIdle();
         });
@@ -1030,18 +1072,18 @@ function setupIdPanel(q, side){
   });
 
   // 既に撮影済みのデータがある場合はそのまま維持（bodyHtml側で表示済み、撮り直しボタンだけ再設定）
-  const existing = answers[q.id + "_" + side];
+  const existing = answers[q.id];
   if (existing){
-    const retakeBtn = document.getElementById(`idRetakeBtn_${side}`);
+    const retakeBtn = document.getElementById(`idRetakeBtn`);
     if (retakeBtn){
       retakeBtn.addEventListener("click", () => {
-        answers[q.id + "_" + side] = null;
+        answers[q.id] = null;
         errorEl.textContent = "";
         renderIdle();
       });
     }
   } else {
-    const camBtn = document.getElementById(`idCameraBtn_${side}`);
+    const camBtn = document.getElementById(`idCameraBtn`);
     if (camBtn) camBtn.addEventListener("click", startCamera);
   }
 }
@@ -1157,27 +1199,23 @@ function renderQuestionScreen(index){
       <label class="address-sublabel address-sublabel-second" for="addressInput">住所</label>
       <input type="text" id="addressInput" value="${escapeHtml(savedAddr)}" placeholder="郵便番号を入力すると自動入力されます" autocomplete="off">
     `;
-  } else if (q.type === "id_document"){
-    function idPanelHtml(side, sideLabel){
-      const savedData = answers[q.id + "_" + side] ?? "";
-      const capturedHtml = savedData
-        ? `<div class="id-captured-wrap" id="idCapturedWrap_${side}">
-             <img src="${savedData}" alt="${sideLabel}">
-             <button type="button" class="id-retake-btn" id="idRetakeBtn_${side}">撮り直す</button>
-           </div>`
-        : `<button type="button" class="id-camera-btn" id="idCameraBtn_${side}">📷 カメラを起動して${sideLabel}を撮影</button>`;
-      return `
-        <div class="id-panel">
-          <div class="id-panel-label">${sideLabel}</div>
-          <div class="id-panel-body" id="idPanelBody_${side}">
-            ${capturedHtml}
-          </div>
-          <div class="id-error-text" id="idError_${side}"></div>
-          <input type="file" accept="image/*" capture="environment" id="idFileInput_${side}" style="display:none;">
+  } else if (q.type === "id_front" || q.type === "id_back"){
+    const savedData = answers[q.id] ?? "";
+    const capturedHtml = savedData
+      ? `<div class="id-captured-wrap">
+           <img src="${savedData}" alt="撮影画像">
+           <button type="button" class="id-retake-btn" id="idRetakeBtn">撮り直す</button>
+         </div>`
+      : `<button type="button" class="id-camera-btn" id="idCameraBtn">📷 カメラを起動して撮影</button>`;
+    bodyHtml = `
+      <div class="id-panel">
+        <div class="id-panel-body" id="idPanelBody">
+          ${capturedHtml}
         </div>
-      `;
-    }
-    bodyHtml = idPanelHtml("front", "表面") + idPanelHtml("back", "裏面");
+        <div class="id-error-text" id="idError"></div>
+        <input type="file" accept="image/*" capture="environment" id="idFileInput" style="display:none;">
+      </div>
+    `;
   } else {
     const inputType = q.type === "email" ? "email" : (q.type === "tel" || q.type === "account_number") ? "tel" : "text";
     const placeholderMap = {
@@ -1196,12 +1234,15 @@ function renderQuestionScreen(index){
     bodyHtml = `<input type="${inputType}" id="answerInput" value="${escapeHtml(savedValue)}" placeholder="${escapeHtml(placeholder)}">`;
   }
 
+  const resolvedLabel = resolveDocumentPlaceholder(q.label, index);
+  const resolvedDescription = resolveDocumentPlaceholder(q.description, index);
+
   const html = `
     <div class="screen active" id="screen-q">
       <div class="q-body">
-        <h2 class="q-label">${escapeHtml(q.label)}${badge}</h2>
+        <h2 class="q-label">${escapeHtml(resolvedLabel)}${badge}</h2>
         ${bodyHtml}
-        <p class="q-desc">${escapeHtml(q.description)}</p>
+        <p class="q-desc">${escapeHtml(resolvedDescription)}</p>
         <div class="error-msg" id="errorMsg"></div>
       </div>
       <div class="footer">
@@ -1379,10 +1420,8 @@ function renderQuestionScreen(index){
 
     setTimeout(() => zipInput.focus(), 50);
 
-  } else if (q.type === "id_document"){
-    ["front", "back"].forEach(side => {
-      setupIdPanel(q, side);
-    });
+  } else if (q.type === "id_front" || q.type === "id_back"){
+    setupIdPanel(q);
   } else {
     const input = document.getElementById("answerInput");
     input.addEventListener("input", () => {
@@ -1441,21 +1480,15 @@ function renderQuestionScreen(index){
       return;
     }
 
-    if (q.type === "id_document"){
-      const frontData = answers[q.id + "_front"];
-      const backData = answers[q.id + "_back"];
+    if (q.type === "id_front" || q.type === "id_back"){
+      const photoData = answers[q.id];
       const errorEl = document.getElementById("errorMsg");
       errorEl.textContent = "";
 
-      if (q.required && (!frontData || !backData)){
-        errorEl.textContent = "表面・裏面の両方を撮影してください。";
+      if (q.required && !photoData){
+        errorEl.textContent = "撮影してください。";
         return;
       }
-
-      answers[q.id] = (frontData && backData) ? "撮影済み（表面・裏面）"
-        : frontData ? "撮影済み（表面のみ）"
-        : backData ? "撮影済み（裏面のみ）"
-        : "";
 
       if (index === QUESTIONS.length - 1){
         renderConfirmScreen();
@@ -1489,20 +1522,18 @@ function renderQuestionScreen(index){
 
 function renderConfirmScreen(){
   const itemsHtml = QUESTIONS.map((q, i) => {
-    if (q.type === "id_document"){
-      const frontData = answers[q.id + "_front"];
-      const backData = answers[q.id + "_back"];
-      const thumbsHtml = (frontData || backData)
-        ? `<div class="confirm-id-thumbs">
-             ${frontData ? `<img src="${frontData}" alt="表面">` : ""}
-             ${backData ? `<img src="${backData}" alt="裏面">` : ""}
-           </div>`
+    const resolvedLabel = resolveDocumentPlaceholder(q.label, i);
+
+    if (q.type === "id_front" || q.type === "id_back"){
+      const photoData = answers[q.id];
+      const thumbHtml = photoData
+        ? `<div class="confirm-id-thumbs"><img src="${photoData}" alt="撮影画像"></div>`
         : `<div class="confirm-item-value empty">（未撮影）</div>`;
       return `
         <div class="confirm-item">
           <div class="confirm-item-main">
-            <div class="confirm-item-label">${escapeHtml(q.label)}</div>
-            ${thumbsHtml}
+            <div class="confirm-item-label">${escapeHtml(resolvedLabel)}</div>
+            ${thumbHtml}
           </div>
           <button class="confirm-edit" data-index="${i}">編集</button>
         </div>
@@ -1515,7 +1546,7 @@ function renderConfirmScreen(){
     return `
       <div class="confirm-item">
         <div class="confirm-item-main">
-          <div class="confirm-item-label">${escapeHtml(q.label)}</div>
+          <div class="confirm-item-label">${escapeHtml(resolvedLabel)}</div>
           <div class="confirm-item-value ${emptyClass}">${escapeHtml(displayVal)}</div>
         </div>
         <button class="confirm-edit" data-index="${i}">編集</button>
@@ -1561,25 +1592,26 @@ function renderConfirmScreen(){
     btnBack.disabled = true;
     btnSubmit.textContent = "送信中…";
 
-    const items = QUESTIONS.map(q => ({
-      label: q.label,
-      value: answers[q.id] ?? ""
-    }));
+    const items = QUESTIONS.map((q, i) => {
+      const resolvedLabel = resolveDocumentPlaceholder(q.label, i);
+      if (q.type === "id_front" || q.type === "id_back"){
+        return { label: resolvedLabel, value: answers[q.id] ? "撮影済み（添付ファイルをご確認ください）" : "未撮影" };
+      }
+      return { label: resolvedLabel, value: answers[q.id] ?? "" };
+    });
 
     // 身分証（カメラ撮影・写真選択）はメール添付ファイルとして別枠で送信する
     const attachments = [];
-    QUESTIONS.forEach(q => {
-      if (q.type !== "id_document") return;
-      ["front", "back"].forEach(side => {
-        const dataUrl = answers[q.id + "_" + side];
-        if (!dataUrl) return;
-        const base64 = dataUrl.split(",")[1]; // "data:image/jpeg;base64,xxxx" の xxxx 部分のみ取り出す
-        const sideLabel = side === "front" ? "表面" : "裏面";
-        attachments.push({
-          filename: `${q.label}_${sideLabel}.jpg`,
-          mimeType: "image/jpeg",
-          base64: base64,
-        });
+    QUESTIONS.forEach((q, i) => {
+      if (q.type !== "id_front" && q.type !== "id_back") return;
+      const dataUrl = answers[q.id];
+      if (!dataUrl) return;
+      const base64 = dataUrl.split(",")[1]; // "data:image/jpeg;base64,xxxx" の xxxx 部分のみ取り出す
+      const resolvedLabel = resolveDocumentPlaceholder(q.label, i);
+      attachments.push({
+        filename: `${resolvedLabel}.jpg`,
+        mimeType: "image/jpeg",
+        base64: base64,
       });
     });
 
