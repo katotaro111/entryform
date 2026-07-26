@@ -1634,7 +1634,7 @@ function renderConfirmScreen(){
     // 身分証（カメラ撮影・写真選択）はメール添付ファイルとして別枠で送信する
     const attachments = [];
     QUESTIONS.forEach((q, i) => {
-      if (q.type !== "id_front" && q.type !== "id_back") return;
+      if (q.type !== "id_front" && q.type !== "id_back" && q.type !== "selfie") return;
       const dataUrl = answers[q.id];
       if (!dataUrl) return;
       const base64 = dataUrl.split(",")[1]; // "data:image/jpeg;base64,xxxx" の xxxx 部分のみ取り出す
